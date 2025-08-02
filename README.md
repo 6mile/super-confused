@@ -5,7 +5,7 @@
 A next-gen dependency confusion analysis tool that identifies confusion opportunities in source code and SBOM files.
 super-confused works on multiple package manifest and SBOM file formats, either locally, or remotely.
 
-I've been using [Confused](https://github.com/visma-prodsec/confused) for years, but really wanted a tool that supported more package manifests, and SBOMs.  Also, I wanted to refactor this in Javascript so I can publish it as an NPM package.  So, super-confused was born!
+I've been using [Confused](https://github.com/visma-prodsec/confused) for years, but really wanted a tool that supported more languages and SBOMs.  Also, I wanted to refactor this in Javascript so I can publish it as an NPM package.  So, super-confused was born!
 
 ## Features
 

@@ -703,7 +703,7 @@ class SuperConfused {
 
                 const output = {
                     "name": "super-confused",
-                    "description": "Identify dependency confusion in your source code",
+                    "description": "Identify dependeny confusion in your source code",
                     "author": "6mile",
                     "dependency-confused-packages": packages
                 };
@@ -713,25 +713,18 @@ class SuperConfused {
             return;
         }
 
-        const highRisk = this.results.filter(r => r.risk === 'HIGH');
-        const unknownRisk = this.results.filter(r => r.risk === 'UNKNOWN');
+        const vulnerabilities = this.results.filter(r => r.risk === 'HIGH' || r.risk === 'UNKNOWN');
 
-        if (highRisk.length === 0 && unknownRisk.length === 0) {
+        if (vulnerabilities.length === 0) {
+            console.log('No Dependency Confusion Opportunities found.');
             return;
         }
 
-        highRisk.forEach(result => {
+        vulnerabilities.forEach(result => {
+            console.log('');
+            console.log('DEPENDENCY CONFUSION OPPORTUNITY!');
             console.log(`${result.package} (${result.ecosystem}) in ${result.file}`);
             console.log(`Version: ${result.version}`);
-            console.log(colorize('This package may not exist in the public registry!', 'red'));
-            console.log('');
-        });
-
-        unknownRisk.forEach(result => {
-            console.log(`${result.package} (${result.ecosystem}) in ${result.file}`);
-            console.log(`Version: ${result.version}`);
-            console.log('Manual verification recommended');
-            console.log('');
         });
     }
 }
