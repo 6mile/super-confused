@@ -343,6 +343,8 @@ class SuperConfused {
                         exists = await this.checkPackagistPackageExists(packageName);
                     } else if (ecosystem === 'gem') {
                         exists = await this.checkRubyGemsPackageExists(packageName);
+                    } else if (ecosystem === 'maven') {
+                        exists = await this.checkMavenPackageExists(packageName);
                     }
                     
                     this.addResult(filePath, ecosystem, packageName, version, exists);
@@ -374,6 +376,8 @@ class SuperConfused {
                         exists = await this.checkPackagistPackageExists(packageName);
                     } else if (ecosystem === 'gem') {
                         exists = await this.checkRubyGemsPackageExists(packageName);
+                    } else if (ecosystem === 'maven') {
+                        exists = await this.checkMavenPackageExists(packageName);
                     }
                     
                     this.addResult(filePath, ecosystem, packageName, version, exists);
@@ -407,6 +411,8 @@ class SuperConfused {
                     exists = await this.checkPackagistPackageExists(packageName);
                 } else if (ecosystem === 'gem') {
                     exists = await this.checkRubyGemsPackageExists(packageName);
+                } else if (ecosystem === 'maven') {
+                    exists = await this.checkMavenPackageExists(packageName);
                 }
                 
                 this.addResult(filePath, ecosystem, packageName, version, exists);
@@ -563,7 +569,8 @@ class SuperConfused {
             const fullName = `${groupId}:${artifactId}`;
             
             if (this.isPotentiallyVulnerable(artifactId)) {
-                this.addResult(filePath, 'maven', fullName, 'unknown', 'unknown');
+                const exists = await this.checkMavenPackageExists(fullName);
+                this.addResult(filePath, 'maven', fullName, 'unknown', exists);
             }
         }
     }
@@ -580,7 +587,8 @@ class SuperConfused {
                 if (parts.length >= 2) {
                     const artifactId = parts[1];
                     if (this.isPotentiallyVulnerable(artifactId)) {
-                        this.addResult(filePath, 'maven', depMatch[1], 'unknown', 'unknown');
+                        const exists = await this.checkMavenPackageExists(depMatch[1]);
+                        this.addResult(filePath, 'maven', depMatch[1], 'unknown', exists);
                     }
                 }
             }
@@ -658,6 +666,67 @@ class SuperConfused {
         return this.makeHttpRequest(`https://rubygems.org/api/v1/gems/${packageName}.json`)
             .then(() => true)
             .catch(() => false);
+    }
+
+    async checkMavenPackageExists(packageName) {
+        // Parse groupId:artifactId format
+        let groupId, artifactId;
+        
+        if (packageName.includes(':')) {
+            const parts = packageName.split(':');
+            groupId = parts[0];
+            artifactId = parts[1];
+        } else {
+            // If only artifact name is provided, we can't reliably check Maven Central
+            // Return 'unknown' for single artifact names without group
+            return 'unknown';
+        }
+
+        // Convert groupId dots to slashes for Maven Central API
+        const groupPath = groupId.replace(/\./g, '/');
+        
+        // Try Maven Central Search API first (more reliable)
+        try {
+            const searchUrl = `https://search.maven.org/solrsearch/select?q=g:"${groupId}"+AND+a:"${artifactId}"&rows=1&wt=json`;
+            const response = await this.makeHttpRequest(searchUrl);
+            
+            // If we get here, the request succeeded, but we need to check the response
+            return new Promise((resolve) => {
+                let data = '';
+                response.on('data', chunk => {
+                    data += chunk;
+                });
+                response.on('end', () => {
+                    try {
+                        const searchResult = JSON.parse(data);
+                        const found = searchResult.response && 
+                                     searchResult.response.numFound && 
+                                     searchResult.response.numFound > 0;
+                        resolve(found);
+                    } catch (e) {
+                        resolve(false);
+                    }
+                });
+            });
+        } catch (searchError) {
+            // Fall back to direct Maven Central repository check
+            try {
+                const repoUrl = `https://repo1.maven.org/maven2/${groupPath}/${artifactId}/maven-metadata.xml`;
+                await this.makeHttpRequest(repoUrl);
+                return true;
+            } catch (repoError) {
+                // Try alternative: check if group directory exists
+                try {
+                    const groupUrl = `https://repo1.maven.org/maven2/${groupPath}/`;
+                    await this.makeHttpRequest(groupUrl);
+                    // Group exists, but artifact might not - return false for dependency confusion potential
+                    return false;
+                } catch (groupError) {
+                    // Neither group nor artifact found
+                    return false;
+                }
+            }
+        }
     }
 
     makeHttpRequest(url) {

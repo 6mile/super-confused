@@ -17,6 +17,14 @@ I've been using [Confused](https://github.com/visma-prodsec/confused) for years,
 
 ## Installation
 
+### NPM Package
+
+```bash
+npm install super-confused
+```
+
+### Source installation
+
 ```bash
 git clone https://github.com/6mile/super-confused.git
 cd super-confused
