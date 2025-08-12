@@ -610,19 +610,25 @@ class SuperConfused {
     }
 
     async scanPomXml(filePath, content) {
-        // More comprehensive regex to capture groupId, artifactId, and version
-        const dependencyRegex = /<dependency[^>]*>[\s\S]*?<groupId>([^<]+)<\/groupId>[\s\S]*?<artifactId>([^<]+)<\/artifactId>[\s\S]*?(?:<version>([^<]+)<\/version>)?[\s\S]*?<\/dependency>/g;
-        let match;
+        // First, find all dependency blocks
+        const dependencyBlocks = content.match(/<dependency[^>]*>[\s\S]*?<\/dependency>/g) || [];
         
-        while ((match = dependencyRegex.exec(content)) !== null) {
-            const groupId = match[1];
-            const artifactId = match[2];
-            const version = match[3] || 'unknown';
-            const fullName = `${groupId}:${artifactId}`;
+        for (const block of dependencyBlocks) {
+            // Extract groupId, artifactId, and version from each block
+            const groupIdMatch = block.match(/<groupId>([^<]+)<\/groupId>/);
+            const artifactIdMatch = block.match(/<artifactId>([^<]+)<\/artifactId>/);
+            const versionMatch = block.match(/<version>([^<]+)<\/version>/);
             
-            if (this.isPotentiallyVulnerable(artifactId)) {
-                const exists = await this.checkMavenPackageExists(fullName);
-                this.addResult(filePath, 'maven', fullName, version, exists);
+            if (groupIdMatch && artifactIdMatch) {
+                const groupId = groupIdMatch[1].trim();
+                const artifactId = artifactIdMatch[1].trim();
+                const version = versionMatch ? versionMatch[1].trim() : 'unknown';
+                const fullName = `${groupId}:${artifactId}`;
+                
+                if (this.isPotentiallyVulnerable(artifactId)) {
+                    const exists = await this.checkMavenPackageExists(fullName);
+                    this.addResult(filePath, 'maven', fullName, version, exists);
+                }
             }
         }
     }

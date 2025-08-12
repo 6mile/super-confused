@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>com.example</groupId>
+    <artifactId>test-application</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    
+    <name>Test Application</name>
+    <description>Sample application for dependency confusion testing</description>
+    
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    
+    <dependencies>
+        <!-- Legitimate, well-known dependencies -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>5.3.21</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- DEPENDENCY CONFUSION OPPORTUNITIES -->
+        <!-- These are suspicious packages that likely don't exist in Maven Central -->
+        
+        <!-- Short, generic name - high risk -->
+        <dependency>
+            <groupId>com.mycompany</groupId>
+            <artifactId>utils</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        
+        <!-- Test-related package - common target for confusion attacks -->
+        <dependency>
+            <groupId>org.internal</groupId>
+            <artifactId>test-helper</artifactId>
+            <version>2.1.0</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Company-specific package with generic name -->
+        <dependency>
+            <groupId>com.acme</groupId>
+            <artifactId>core</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        
+        <!-- Demo/example package -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>demo-lib</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+        
+        <!-- Internal tool with suspicious name -->
+        <dependency>
+            <groupId>com.sixmile</groupId>
+            <artifactId>6mile-tool</artifactId>
+            <version>4.5.6</version>
+        </dependency>
+        
+        <!-- Short artifact name -->
+        <dependency>
+            <groupId>org.tools</groupId>
+            <artifactId>lib</artifactId>
+            <version>0.9.0</version>
+        </dependency>
+        
+        <!-- Package without version (will show as unknown) -->
+        <dependency>
+            <groupId>com.suspicious</groupId>
+            <artifactId>helper</artifactId>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    
+</project>
