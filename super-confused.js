@@ -227,11 +227,41 @@ class SuperConfused {
         
         for (const line of lines) {
             const trimmed = line.trim();
-            if (trimmed && !trimmed.startsWith('#')) {
-                const packageMatch = trimmed.match(/^([a-zA-Z0-9\-_\.]+)/);
-                if (packageMatch && this.isPotentiallyVulnerable(packageMatch[1])) {
-                    const exists = await this.checkPyPiPackageExists(packageMatch[1]);
-                    this.addResult(filePath, 'pypi', packageMatch[1], 'unknown', exists);
+            if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('-')) {
+                // Match various requirements.txt formats:
+                // package==1.0.0
+                // package>=1.0.0
+                // package~=1.0.0
+                // package!=1.0.0
+                // package<=1.0.0
+                // package>1.0.0
+                // package<1.0.0
+                // package[extra]==1.0.0
+                // package
+                
+                let packageName, version = 'unknown';
+                
+                // Try to match package with version specifiers
+                const versionMatch = trimmed.match(/^([a-zA-Z0-9\-_\.]+(?:\[[^\]]*\])?)\s*([><=!~]+)\s*([^;,\s]+)/);
+                if (versionMatch) {
+                    packageName = versionMatch[1].replace(/\[.*\]/, ''); // Remove extras like [dev]
+                    const operator = versionMatch[2];
+                    const versionNumber = versionMatch[3];
+                    version = `${operator}${versionNumber}`;
+                } else {
+                    // Try to match package without version
+                    const packageMatch = trimmed.match(/^([a-zA-Z0-9\-_\.]+)/);
+                    if (packageMatch) {
+                        packageName = packageMatch[1];
+                        version = 'unknown';
+                    } else {
+                        continue;
+                    }
+                }
+                
+                if (packageName && this.isPotentiallyVulnerable(packageName)) {
+                    const exists = await this.checkPyPiPackageExists(packageName);
+                    this.addResult(filePath, 'pypi', packageName, version, exists);
                 }
             }
         }
@@ -266,29 +296,69 @@ class SuperConfused {
                 continue;
             }
             
-            // Parse dependencies
+            // Parse dependencies with version extraction
             if ((inDependencies || inOptionalDependencies) && trimmed.includes('"')) {
-                // Match patterns like "requests>=2.25.1" or "flask==2.0.0"
-                const depMatch = trimmed.match(/"([a-zA-Z0-9\-_\.]+)/);
-                if (depMatch && this.isPotentiallyVulnerable(depMatch[1])) {
-                    const exists = await this.checkPyPiPackageExists(depMatch[1]);
-                    this.addResult(filePath, 'pypi', depMatch[1], 'unknown', exists);
+                // Match patterns like:
+                // "requests>=2.25.1"
+                // "flask==2.0.0"
+                // "django~=4.0"
+                // "requests[security]>=2.25.1"
+                // "requests"
+                
+                let packageName, version = 'unknown';
+                
+                // Try to match dependency with version
+                const depWithVersionMatch = trimmed.match(/"([a-zA-Z0-9\-_\.]+)(?:\[[^\]]*\])?\s*([><=!~]+)\s*([^"]+)"/);
+                if (depWithVersionMatch) {
+                    packageName = depWithVersionMatch[1];
+                    const operator = depWithVersionMatch[2];
+                    const versionNumber = depWithVersionMatch[3];
+                    version = `${operator}${versionNumber}`;
+                } else {
+                    // Try to match dependency without version
+                    const depMatch = trimmed.match(/"([a-zA-Z0-9\-_\.]+)(?:\[[^\]]*\])?"/);
+                    if (depMatch) {
+                        packageName = depMatch[1];
+                        version = 'unknown';
+                    }
+                }
+                
+                if (packageName && this.isPotentiallyVulnerable(packageName)) {
+                    const exists = await this.checkPyPiPackageExists(packageName);
+                    this.addResult(filePath, 'pypi', packageName, version, exists);
                 }
             }
             
-            // Also check for [project] dependencies format
+            // Also check for [project] dependencies format (single line)
             if (trimmed.startsWith('dependencies') && trimmed.includes('=') && trimmed.includes('[')) {
                 // Handle single-line dependencies array
                 const depsMatch = trimmed.match(/dependencies\s*=\s*\[(.*)\]/);
                 if (depsMatch) {
                     const depsString = depsMatch[1];
                     const deps = depsString.split(',');
+                    
                     for (const dep of deps) {
                         const cleanDep = dep.trim().replace(/['"]/g, '');
-                        const packageMatch = cleanDep.match(/^([a-zA-Z0-9\-_\.]+)/);
-                        if (packageMatch && this.isPotentiallyVulnerable(packageMatch[1])) {
-                            const exists = await this.checkPyPiPackageExists(packageMatch[1]);
-                            this.addResult(filePath, 'pypi', packageMatch[1], 'unknown', exists);
+                        let packageName, version = 'unknown';
+                        
+                        // Try to extract version from single-line format
+                        const versionMatch = cleanDep.match(/^([a-zA-Z0-9\-_\.]+)(?:\[[^\]]*\])?\s*([><=!~]+)\s*(.+)/);
+                        if (versionMatch) {
+                            packageName = versionMatch[1];
+                            const operator = versionMatch[2];
+                            const versionNumber = versionMatch[3];
+                            version = `${operator}${versionNumber}`;
+                        } else {
+                            const packageMatch = cleanDep.match(/^([a-zA-Z0-9\-_\.]+)/);
+                            if (packageMatch) {
+                                packageName = packageMatch[1];
+                                version = 'unknown';
+                            }
+                        }
+                        
+                        if (packageName && this.isPotentiallyVulnerable(packageName)) {
+                            const exists = await this.checkPyPiPackageExists(packageName);
+                            this.addResult(filePath, 'pypi', packageName, version, exists);
                         }
                     }
                 }
