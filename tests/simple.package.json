@@ -1,0 +1,18 @@
+{
+  "name": "example yo",
+  "version": "0.2.3",
+  "description": "This is an example package.json for super-confused to use",
+  "license": "ISC",
+  "author": "6mile",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "~7.0.0",
+    "stinray-bumdingle": "~2.0.0",
+    "lodash": "^4.17.21"
+  },
+}

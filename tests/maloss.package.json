@@ -1,0 +1,31 @@
+{
+  "name": "maloss",
+  "version": "0.2.3",
+  "description": "MALOSS (pronounced \"malice\"), scans package manifest files to see if any of the libraries and packages are malicious.",
+  "keywords": [
+    "sca",
+    "security",
+    "test",
+    "malicious-packages",
+    "malware",
+    "scanner"
+  ],
+  "homepage": "https://github.com/6mile/MALOSS#readme",
+  "bugs": {
+    "url": "https://github.com/6mile/MALOSS/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/6mile/MALOSS.git"
+  },
+  "bin": {
+    "maloss": "maloss.js"
+  },
+  "license": "ISC",
+  "author": "6mile",
+  "type": "commonjs",
+  "main": "maloss.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

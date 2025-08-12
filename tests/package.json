@@ -1,0 +1,92 @@
+{
+  "name": "bloodhound-spa",
+  "version": "0.1.1-alpha.6",
+  "private": true,
+  "dependencies": {
+    "@apollo/client": "^3.3.16",
+    "@apollo/react-hooks": "^4.0.0",
+    "@auth0/auth0-react": "^1.5.0",
+    "@material-ui/core": "^4.11.4",
+    "@material-ui/icons": "^4.11.2",
+    "@material-ui/lab": "^4.0.0-alpha.58",
+    "@mui-treasury/components": "^1.10.1",
+    "@mui-treasury/styles": "^1.13.1",
+    "@sentry/react": "^6.3.5",
+    "@sentry/tracing": "^6.3.5",
+    "@testeroni/stinkbug": "1.0.0",
+    "@testeroni/test": "1.0.0",
+    "@testing-library/react": "^11.2.6",
+    "@testing-library/user-event": "^13.1.8",
+    "amazon-cognito-identity-js": "^4.6.1",
+    "apexcharts": "^3.26.2",
+    "aws-sdk": "^2.903.0",
+    "paultest-humanint": "^2.903.0",
+    "chart.js": "^3.2.1",
+    "env-cmd": "^10.1.0",
+    "fusioncharts": "^3.17.0",
+    "graphql": "^15.5.0",
+    "hosted-git-info": "^4.0.2",
+    "immer": "^9.0.2",
+    "lazy-cache": "^2.0.2",
+    "lodash._basecopy": "^3.0.1",
+    "lodash._basetostring": "^4.12.0",
+    "material-auto-rotating-carousel": "^3.0.2",
+    "postcss": "^8.2.9",
+    "public-ip": "^4.0.3",
+    "raven-js": "^3.27.2",
+    "react": "^17.0.2",
+    "react-apexcharts": "^1.3.9",
+    "react-chartjs-2": "^3.0.3",
+    "react-dom": "^17.0.2",
+    "react-fusioncharts": "^3.1.2",
+    "react-ga": "^3.3.0",
+    "react-google-font-loader": "^1.1.0",
+    "react-icons": "^4.2.0",
+    "react-router": "^5.2.0",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "^4.0.3",
+    "react-scripts-bing": "^1.0.3",
+    "react-simple-maps": "^2.3.0",
+    "react-swipeable-views": "^0.13.9",
+    "react-syntax-highlighter": "^15.4.3",
+    "react-typing-effect": "^2.0.5",
+    "request-promise": "^4.2.6",
+    "subscriptions-transport-ws": "^0.9.18",
+    "surge": "^0.23.0",
+    "typewriter-effect": "^2.17.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "start:dev": "env-cmd -f .dev.env react-scripts start",
+    "start:prod": "env-cmd -f .prod.env react-scripts start",
+    "start:local": "env-cmd -f .local.env react-scripts start",
+    "start:staging": "env-cmd -f .staging.env react-scripts start",
+    "build": "env-cmd -f .prod.env react-scripts build",
+    "build:staging": "env-cmd -f .staging.env react-scripts build",
+    "build:dev": "env-cmd -f .dev.env react-scripts build",
+    "build:prod": "env-cmd -f .prod.env react-scripts build",
+    "build:local": "env-cmd -f .local.env react-scripts build",
+    "test": "snyk test && react-scripts test",
+    "eject": "react-scripts eject",
+    "deploy:prod": "./deploy_prod_frontend.sh",
+    "deploy:surge": "npm run build && mv build/index.html build/200.html && surge build bloodhound.surge.sh"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "prettier": "^2.3.0"
+  }
+}

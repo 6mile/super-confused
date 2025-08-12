@@ -550,8 +550,58 @@ class SuperConfused {
         
         for (const line of lines) {
             const trimmed = line.trim();
-            const gemMatch = trimmed.match(/gem\s+['"]([^'"]+)['"]/);
             
+            // Skip comments and empty lines
+            if (!trimmed || trimmed.startsWith('#')) {
+                continue;
+            }
+            
+            // Match various gem declaration formats and capture version:
+            // gem 'name'
+            // gem "name"  
+            // gem 'name', 'version'
+            // gem 'name', version: 'x.x.x'
+            // gem 'name', '~> x.x.x'
+            let gemMatch, version = 'unknown';
+            
+            // Try to match gem with quoted version: gem 'name', 'version'
+            gemMatch = trimmed.match(/gem\s+['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/);
+            if (gemMatch) {
+                const packageName = gemMatch[1];
+                version = gemMatch[2];
+                if (this.isPotentiallyVulnerable(packageName)) {
+                    const exists = await this.checkRubyGemsPackageExists(packageName);
+                    this.addResult(filePath, 'rubygems', packageName, version, exists);
+                }
+                continue;
+            }
+            
+            // Try to match gem with version: syntax: gem 'name', version: 'x.x.x'
+            gemMatch = trimmed.match(/gem\s+['"]([^'"]+)['"]\s*,\s*version:\s*['"]([^'"]+)['"]/);
+            if (gemMatch) {
+                const packageName = gemMatch[1];
+                version = gemMatch[2];
+                if (this.isPotentiallyVulnerable(packageName)) {
+                    const exists = await this.checkRubyGemsPackageExists(packageName);
+                    this.addResult(filePath, 'rubygems', packageName, version, exists);
+                }
+                continue;
+            }
+            
+            // Try to match gem with hash syntax: gem 'name', '~> x.x.x', require: false
+            gemMatch = trimmed.match(/gem\s+['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"](?:\s*,.*)?/);
+            if (gemMatch) {
+                const packageName = gemMatch[1];
+                version = gemMatch[2];
+                if (this.isPotentiallyVulnerable(packageName)) {
+                    const exists = await this.checkRubyGemsPackageExists(packageName);
+                    this.addResult(filePath, 'rubygems', packageName, version, exists);
+                }
+                continue;
+            }
+            
+            // Fall back to simple gem declaration without version
+            gemMatch = trimmed.match(/gem\s+['"]([^'"]+)['"](?:\s*$|\s*,\s*(?!['"]))/);
             if (gemMatch && this.isPotentiallyVulnerable(gemMatch[1])) {
                 const exists = await this.checkRubyGemsPackageExists(gemMatch[1]);
                 this.addResult(filePath, 'rubygems', gemMatch[1], 'unknown', exists);
@@ -560,17 +610,19 @@ class SuperConfused {
     }
 
     async scanPomXml(filePath, content) {
-        const dependencyRegex = /<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>/g;
+        // More comprehensive regex to capture groupId, artifactId, and version
+        const dependencyRegex = /<dependency[^>]*>[\s\S]*?<groupId>([^<]+)<\/groupId>[\s\S]*?<artifactId>([^<]+)<\/artifactId>[\s\S]*?(?:<version>([^<]+)<\/version>)?[\s\S]*?<\/dependency>/g;
         let match;
         
         while ((match = dependencyRegex.exec(content)) !== null) {
             const groupId = match[1];
             const artifactId = match[2];
+            const version = match[3] || 'unknown';
             const fullName = `${groupId}:${artifactId}`;
             
             if (this.isPotentiallyVulnerable(artifactId)) {
                 const exists = await this.checkMavenPackageExists(fullName);
-                this.addResult(filePath, 'maven', fullName, 'unknown', exists);
+                this.addResult(filePath, 'maven', fullName, version, exists);
             }
         }
     }
@@ -580,16 +632,58 @@ class SuperConfused {
         
         for (const line of lines) {
             const trimmed = line.trim();
-            const depMatch = trimmed.match(/(?:implementation|compile|api|testImplementation)\s+['"]([^'"]+)['"]/);
             
+            // Match various Gradle dependency formats with versions:
+            // implementation 'group:artifact:version'
+            // implementation "group:artifact:version"
+            // implementation group: 'group', name: 'artifact', version: 'version'
+            
+            let depMatch, groupId, artifactId, version = 'unknown';
+            
+            // Try to match standard format: implementation 'group:artifact:version'
+            depMatch = trimmed.match(/(?:implementation|compile|api|testImplementation|runtimeOnly|compileOnly|testCompileOnly|testRuntimeOnly)\s+['"]([^'"]+)['"]/);
             if (depMatch) {
                 const parts = depMatch[1].split(':');
                 if (parts.length >= 2) {
-                    const artifactId = parts[1];
+                    groupId = parts[0];
+                    artifactId = parts[1];
+                    version = parts[2] || 'unknown';
+                    const fullName = parts.length >= 3 ? `${groupId}:${artifactId}` : depMatch[1];
+                    
                     if (this.isPotentiallyVulnerable(artifactId)) {
-                        const exists = await this.checkMavenPackageExists(depMatch[1]);
-                        this.addResult(filePath, 'maven', depMatch[1], 'unknown', exists);
+                        const exists = await this.checkMavenPackageExists(fullName);
+                        this.addResult(filePath, 'maven', fullName, version, exists);
                     }
+                }
+                continue;
+            }
+            
+            // Try to match map syntax: implementation group: 'group', name: 'artifact', version: 'version'
+            const mapMatch = trimmed.match(/(?:implementation|compile|api|testImplementation|runtimeOnly|compileOnly|testCompileOnly|testRuntimeOnly)\s+group:\s*['"]([^'"]+)['"],?\s*name:\s*['"]([^'"]+)['"](?:,?\s*version:\s*['"]([^'"]+)['"])?/);
+            if (mapMatch) {
+                groupId = mapMatch[1];
+                artifactId = mapMatch[2];
+                version = mapMatch[3] || 'unknown';
+                const fullName = `${groupId}:${artifactId}`;
+                
+                if (this.isPotentiallyVulnerable(artifactId)) {
+                    const exists = await this.checkMavenPackageExists(fullName);
+                    this.addResult(filePath, 'maven', fullName, version, exists);
+                }
+                continue;
+            }
+            
+            // Try to match alternative map syntax with different order
+            const altMapMatch = trimmed.match(/(?:implementation|compile|api|testImplementation|runtimeOnly|compileOnly|testCompileOnly|testRuntimeOnly)\s+name:\s*['"]([^'"]+)['"],?\s*group:\s*['"]([^'"]+)['"](?:,?\s*version:\s*['"]([^'"]+)['"])?/);
+            if (altMapMatch) {
+                artifactId = altMapMatch[1];
+                groupId = altMapMatch[2];
+                version = altMapMatch[3] || 'unknown';
+                const fullName = `${groupId}:${artifactId}`;
+                
+                if (this.isPotentiallyVulnerable(artifactId)) {
+                    const exists = await this.checkMavenPackageExists(fullName);
+                    this.addResult(filePath, 'maven', fullName, version, exists);
                 }
             }
         }
@@ -604,18 +698,20 @@ class SuperConfused {
         if (packageName.startsWith('@')) {
             // Only check scoped packages that look suspicious
             const scopedSuspiciousPatterns = [
-                /^@[a-z]+\/[a-z]{3,8}$/,  // short package names in scope
-                /^@[a-z]+\/(lib|utils?|helper|common|core|base|tools?|sdk)$/i,  // generic names
-                /^@[a-z]+\/(test|demo|example|sample)[-_]?/i,  // test/demo packages
+                /^@[a-z0-9]+\/[a-z0-9]{3,8}$/i,  // short package names in scope
+                /^@[a-z0-9]+\/(lib|utils?|helper|common|core|base|tools?|sdk)$/i,  // generic names
+                /^@[a-z0-9]+\/(test|demo|example|sample)[-_]?/i,  // test/demo packages
             ];
             return scopedSuspiciousPatterns.some(pattern => pattern.test(packageName));
         }
         
         const suspiciousPatterns = [
-            /^[a-z]+[-_][a-z]+$/,
-            /^[a-z]{3,8}$/,
-            /^(lib|utils?|helper|common|core|base|tools?|sdk)$/i,
-            /^(test|demo|example|sample)[-_]?/i,
+            /^[a-z0-9]+[-_][a-z0-9]+$/i,  // patterns like "6mile-test", "test-utils", etc.
+            /^[a-z0-9]{3,8}$/i,  // short alphanumeric names
+            /^(lib|utils?|helper|common|core|base|tools?|sdk)$/i,  // generic names
+            /^(test|demo|example|sample)[-_]?/i,  // test/demo packages
+            /^[a-z0-9]*[-_]?(test|demo|example|sample)$/i,  // packages ending with test/demo
+            /^[0-9]+[a-z]+[-_]?[a-z0-9]*$/i,  // packages starting with numbers like "6mile"
         ];
 
         const wellKnownPackages = [
@@ -623,7 +719,8 @@ class SuperConfused {
             'jquery', 'bootstrap', 'webpack', 'babel', 'eslint', 'jest', 'mocha',
             'typescript', 'commander', 'chalk', 'inquirer', 'yargs', 'fs-extra',
             'rimraf', 'glob', 'mkdirp', 'debug', 'semver', 'uuid', 'cors',
-            'dotenv', 'nodemon', 'concurrently', 'cross-env', 'husky', 'lint-staged'
+            'dotenv', 'nodemon', 'concurrently', 'cross-env', 'husky', 'lint-staged',
+            'rails', 'sqlite3', 'pg', 'mysql2', 'puma', 'sidekiq', 'devise', 'rspec'
         ];
 
         if (wellKnownPackages.includes(packageName.toLowerCase())) {
@@ -663,9 +760,21 @@ class SuperConfused {
     }
 
     async checkRubyGemsPackageExists(packageName) {
-        return this.makeHttpRequest(`https://rubygems.org/api/v1/gems/${packageName}.json`)
-            .then(() => true)
-            .catch(() => false);
+        // Clean the package name - remove any version constraints or other characters
+        const cleanPackageName = packageName.replace(/[<>=!~\s]/g, '').split(',')[0].trim();
+        
+        try {
+            await this.makeHttpRequest(`https://rubygems.org/api/v1/gems/${cleanPackageName}.json`);
+            return true;
+        } catch (error) {
+            // Try alternative endpoint format
+            try {
+                await this.makeHttpRequest(`https://rubygems.org/api/v1/versions/${cleanPackageName}.json`);
+                return true;
+            } catch (alternativeError) {
+                return false;
+            }
+        }
     }
 
     async checkMavenPackageExists(packageName) {

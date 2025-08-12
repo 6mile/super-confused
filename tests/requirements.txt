@@ -1,0 +1,4 @@
+whee11==1.0.0
+selenium>=4.0.0
+stinkbumnewby>=1.0.0
+pymocks==1.3.8
