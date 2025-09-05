@@ -175,6 +175,10 @@ class SuperConfused {
             };
 
             for (const [name, version] of Object.entries(dependencies || {})) {
+                // Skip local file dependencies
+                if (version.startsWith('file:')) {
+                    continue;
+                }
                 if (this.isPotentiallyVulnerable(name)) {
                     const exists = await this.checkNpmPackageExists(name);
                     this.addResult(filePath, 'npm', name, version, exists);
